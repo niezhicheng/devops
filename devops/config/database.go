@@ -14,7 +14,7 @@ import (
 
 func InitDB() {
 	dsn := "root:d200145001@tcp(127.0.0.1:3306)/devops?charset=utf8mb4&parseTime=True&loc=Local"
-	
+
 	// 配置GORM
 	gormConfig := &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
@@ -47,7 +47,7 @@ func InitDB() {
 
 	// 自动迁移数据库表
 	log.Println("开始数据库迁移...")
-	err = global.DB.AutoMigrate(&models.Host{})
+	err = global.DB.AutoMigrate(&models.Host{}, models.Repository{})
 	if err != nil {
 		log.Fatalf("数据库迁移失败: %v", err)
 	}

@@ -46,6 +46,17 @@ func main() {
 		hostGroup.GET("/:id/download", controllers.DownloadFile)
 	}
 
+	// 仓库管理路由
+	repositoryGroup := r.Group("/api/repositories")
+	//repositoryGroup.Use(middleware.AuthMiddleware())
+	{
+		repositoryGroup.GET("", controllers.List)
+		repositoryGroup.POST("", controllers.Create)
+		repositoryGroup.GET("/:id", controllers.Get)
+		repositoryGroup.PUT("/:id", controllers.Update)
+		repositoryGroup.DELETE("/:id", controllers.Delete)
+	}
+
 	// 启动服务器
 	r.Run(":8080")
 }

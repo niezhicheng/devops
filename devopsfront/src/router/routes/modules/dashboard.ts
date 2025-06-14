@@ -32,6 +32,16 @@ const DASHBOARD: AppRouteRecordRaw = {
         roles: ['*'],
       },
     },
+    {
+      path: 'warehouse',
+      name: 'warehouse',
+      component: () => import('@/views/warehouse/warehouse.vue'),
+      meta: {
+        locale: '仓库管理',
+        requiresAuth: true,
+        roles: ['*'],
+      },
+    },
   ],
 };
 
