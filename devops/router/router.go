@@ -30,7 +30,11 @@ func SetupRouter() *gin.Engine {
 	// 仓库管理路由
 	setupRepositoryRoutes(api)
 
+	//镜像 中心
 	RegisterDockerRegistryRoutes(api)
+
+	//项目中心
+	SetupProjectRoutes(api)
 
 	return r
 }
