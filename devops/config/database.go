@@ -47,7 +47,7 @@ func InitDB() {
 
 	// 自动迁移数据库表
 	log.Println("开始数据库迁移...")
-	err = global.DB.AutoMigrate(&models.Host{}, models.Repository{}, models.DockerRegistry{})
+	err = global.DB.AutoMigrate(&models.Host{}, models.Repository{}, models.DockerRegistry{}, models.Project{})
 	if err != nil {
 		log.Fatalf("数据库迁移失败: %v", err)
 	}

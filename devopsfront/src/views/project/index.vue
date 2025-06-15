@@ -1,18 +1,30 @@
 <template>
   <div class="project-list">
     <div class="header">
-      <h2>项目管理</h2>
-      <a-button type="primary" @click="handleCreate">创建项目</a-button>
+      <div class="header-left">
+        <h2>项目管理</h2>
+        <a-tag color="arcoblue" class="project-count">共 {{ total }} 个项目</a-tag>
+      </div>
+      <div class="header-right">
+        <a-button type="primary" @click="handleCreate">
+          <template #icon><icon-plus /></template>
+          创建项目
+        </a-button>
+      </div>
     </div>
 
-    <a-card class="filter-card">
+    <a-card class="filter-card" :bordered="false">
       <a-form :model="filterForm" layout="inline" class="filter-form">
         <a-form-item field="name" label="项目名称">
           <a-input
             v-model="filterForm.name"
             placeholder="请输入项目名称"
             allow-clear
-          />
+          >
+            <template #prefix>
+              <icon-search />
+            </template>
+          </a-input>
         </a-form-item>
         <a-form-item field="environment" label="环境">
           <a-select
@@ -20,75 +32,119 @@
             placeholder="请选择环境"
             allow-clear
           >
-            <a-option value="dev">开发环境</a-option>
-            <a-option value="test">测试环境</a-option>
-            <a-option value="prod">生产环境</a-option>
+            <a-option value="dev">
+              <icon-code /> 开发环境
+            </a-option>
+            <a-option value="test">
+              <icon-bug /> 测试环境
+            </a-option>
+            <a-option value="prod">
+              <icon-rocket /> 生产环境
+            </a-option>
           </a-select>
         </a-form-item>
         <a-form-item>
           <a-space>
-            <a-button type="primary" @click="handleSearch">搜索</a-button>
-            <a-button @click="handleReset">重置</a-button>
+            <a-button type="primary" @click="handleSearch">
+              <template #icon><icon-search /></template>
+              搜索
+            </a-button>
+            <a-button @click="handleReset">
+              <template #icon><icon-refresh /></template>
+              重置
+            </a-button>
           </a-space>
         </a-form-item>
       </a-form>
     </a-card>
 
-    <a-table
-      :loading="loading"
-      :data="projects"
-      :pagination="{
-        total,
-        current: page,
-        pageSize,
-        showTotal: true,
-        showJumper: true,
-        showPageSize: true,
-      }"
-      @page-change="handlePageChange"
-      @page-size-change="handlePageSizeChange"
-    >
-      <template #columns>
-        <a-table-column title="项目名称" data-index="name" />
-        <a-table-column title="描述" data-index="description" :ellipsis="true" />
-        <a-table-column title="环境" data-index="environment">
-          <template #cell="{ record }">
-            <a-tag :color="getEnvironmentColor(record.environment)">
-              {{ getEnvironmentLabel(record.environment) }}
-            </a-tag>
-          </template>
-        </a-table-column>
-        <a-table-column title="版本" data-index="version" />
-        <a-table-column title="分支" data-index="branch" />
-        <a-table-column title="构建状态" data-index="last_build_status">
-          <template #cell="{ record }">
-            <a-tag :color="getBuildStatusColor(record.last_build_status)">
-              {{ record.last_build_status || '未构建' }}
-            </a-tag>
-          </template>
-        </a-table-column>
-        <a-table-column title="最后构建时间" data-index="last_build_time">
-          <template #cell="{ record }">
-            {{ record.last_build_time ? formatDate(record.last_build_time) : '-' }}
-          </template>
-        </a-table-column>
-        <a-table-column title="操作" fixed="right" :width="200">
-          <template #cell="{ record }">
-            <a-space>
-              <a-button type="text" @click="handleEdit(record)">
-                编辑
-              </a-button>
-              <a-button type="text" @click="handleBuild(record)">
-                构建
-              </a-button>
-              <a-button type="text" status="danger" @click="handleDelete(record)">
-                删除
-              </a-button>
-            </a-space>
-          </template>
-        </a-table-column>
-      </template>
-    </a-table>
+    <a-card class="table-card" :bordered="false">
+      <a-table
+        :loading="loading"
+        :data="projects"
+        :pagination="{
+          total,
+          current: page,
+          pageSize,
+          showTotal: true,
+          showJumper: true,
+          showPageSize: true,
+        }"
+        @page-change="handlePageChange"
+        @page-size-change="handlePageSizeChange"
+        :row-class="getRowClass"
+      >
+        <template #columns>
+          <a-table-column title="项目名称" data-index="name">
+            <template #cell="{ record }">
+              <div class="project-name">
+                <icon-folder />
+                <span>{{ record.name }}</span>
+              </div>
+            </template>
+          </a-table-column>
+          <a-table-column title="描述" data-index="description" :ellipsis="true" />
+          <a-table-column title="环境" data-index="environment">
+            <template #cell="{ record }">
+              <a-tag :color="getEnvironmentColor(record.environment)">
+                {{ getEnvironmentLabel(record.environment) }}
+              </a-tag>
+            </template>
+          </a-table-column>
+          <a-table-column title="版本" data-index="version">
+            <template #cell="{ record }">
+              <a-tag color="arcoblue">{{ record.version }}</a-tag>
+            </template>
+          </a-table-column>
+          <a-table-column title="分支" data-index="branch">
+            <template #cell="{ record }">
+              <a-tag color="arcogreen">{{ record.branch }}</a-tag>
+            </template>
+          </a-table-column>
+          <a-table-column title="构建状态" data-index="last_build_status">
+            <template #cell="{ record }">
+              <a-tag :color="getBuildStatusColor(record.last_build_status)">
+                <template #icon>
+                  <icon-check-circle v-if="record.last_build_status === 'success'" />
+                  <icon-close-circle v-else-if="record.last_build_status === 'failed'" />
+                  <icon-clock-circle v-else />
+                </template>
+                {{ record.last_build_status || '未构建' }}
+              </a-tag>
+            </template>
+          </a-table-column>
+          <a-table-column title="最后构建时间" data-index="last_build_time">
+            <template #cell="{ record }">
+              <div class="build-time">
+                <icon-clock-circle />
+                {{ record.last_build_time ? formatDate(record.last_build_time) : '-' }}
+              </div>
+            </template>
+          </a-table-column>
+          <a-table-column title="操作" fixed="right" :width="200">
+            <template #cell="{ record }">
+              <a-space>
+                <a-tooltip content="编辑项目">
+                  <a-button type="text" @click="handleEdit(record)">
+                    <template #icon><icon-edit /></template>
+                  </a-button>
+                </a-tooltip>
+                <a-tooltip content="构建项目">
+                  <a-button type="text" @click="handleBuild(record)">
+                    <template #icon><icon-play-circle /></template>
+                  </a-button>
+                </a-tooltip>
+                <a-tooltip content="删除项目">
+                  <a-button type="text" status="danger" @click="handleDelete(record)">
+                    <template #icon><icon-delete /></template>
+                  </a-button>
+                </a-tooltip>
+              </a-space>
+            </template>
+          </a-table-column>
+        </template>
+      </a-table>
+    </a-card>
 
     <a-modal
       v-model:visible="dialogVisible"
@@ -185,7 +241,6 @@ import { Message, Modal } from '@arco-design/web-vue'
 import { getProjects, createProject, updateProject, deleteProject } from '@/api/project'
 import { getRepositories } from '@/api/repository'
 import { getDockerRegistries } from '@/api/registry'
-import { formatDate } from '@/utils/date'
 
 // 数据列表
 const projects = ref([])
@@ -421,6 +476,15 @@ const handleSubmit = async () => {
   }
 }
 
+// 获取行样式
+const getRowClass = (record) => {
+  return {
+    'row-success': record.last_build_status === 'success',
+    'row-failed': record.last_build_status === 'failed',
+    'row-pending': !record.last_build_status
+  }
+}
+
 // 初始化
 onMounted(() => {
   fetchProjects()
@@ -429,25 +493,63 @@ onMounted(() => {
 })
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .project-list {
   padding: 20px;
-}
 
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
 
-.filter-card {
-  margin-bottom: 20px;
-}
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
 
-.filter-form {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
+      h2 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 500;
+      }
+
+      .project-count {
+        font-size: 14px;
+      }
+    }
+  }
+
+  .filter-card {
+    margin-bottom: 20px;
+  }
+
+  .table-card {
+    :deep(.arco-table-tr) {
+      &.row-success {
+        background-color: var(--color-success-light-1);
+      }
+      &.row-failed {
+        background-color: var(--color-danger-light-1);
+      }
+      &.row-pending {
+        background-color: var(--color-neutral-light-1);
+      }
+    }
+  }
+
+  .project-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+  }
+
+  .build-time {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--color-text-3);
+  }
 }
 </style>

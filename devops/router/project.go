@@ -2,7 +2,6 @@ package router
 
 import (
 	"devops/controllers"
-	"devops/middleware"
 	"github.com/gin-gonic/gin"
 )
 
@@ -11,8 +10,7 @@ func SetupProjectRoutes(router *gin.RouterGroup) {
 	projectController := controllers.NewProjectController()
 
 	// 项目路由组
-	projects := router.Group("/api/projects")
-	projects.Use(middleware.AuthMiddleware())
+	projects := router.Group("/projects")
 	{
 		projects.POST("", projectController.CreateProject)
 		projects.GET("", projectController.GetProjects)
