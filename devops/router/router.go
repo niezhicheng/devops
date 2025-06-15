@@ -30,6 +30,8 @@ func SetupRouter() *gin.Engine {
 	// 仓库管理路由
 	setupRepositoryRoutes(api)
 
+	RegisterDockerRegistryRoutes(api)
+
 	return r
 }
 
@@ -69,4 +71,4 @@ func setupRepositoryRoutes(api *gin.RouterGroup) {
 		repos.GET("/:id/commits", repositoryController.GetCommits)
 		repos.GET("/:id/files", repositoryController.GetFiles)
 	}
-} 
+}

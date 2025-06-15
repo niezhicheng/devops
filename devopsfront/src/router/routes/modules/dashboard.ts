@@ -1,6 +1,7 @@
 import { DEFAULT_LAYOUT } from '../base';
 import { AppRouteRecordRaw } from '../types';
 
+// @ts-ignore
 const DASHBOARD: AppRouteRecordRaw = {
   path: '/dashboard',
   name: 'dashboard',
@@ -42,6 +43,16 @@ const DASHBOARD: AppRouteRecordRaw = {
         roles: ['*'],
       },
     },
+    {
+      path: '/registry',
+      name: 'registry',
+      component: () => import('@/views/registry/registry.vue'),
+      meta: {
+        locale: '镜像中心',
+        requiresAuth: true,
+        roles: ['*'],
+      },
+    }
   ],
 };
 

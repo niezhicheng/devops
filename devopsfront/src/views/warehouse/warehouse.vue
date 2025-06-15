@@ -81,7 +81,7 @@ const columns: TableColumnData[] = [
   {
     title: '操作',
     key: 'action',
-    width: 200,
+    width: 280,
     fixed: 'right',
     slotName: 'action',
   },
@@ -104,24 +104,26 @@ const branchColumns: TableColumnData[] = [
 // 提交记录表格列定义
 const commitColumns: TableColumnData[] = [
   {
-    title: '提交哈希',
-    dataIndex: 'hash',
-    key: 'hash',
-  },
-  {
-    title: '作者',
-    dataIndex: 'author',
-    key: 'author',
-  },
-  {
     title: '提交信息',
     dataIndex: 'message',
     key: 'message',
   },
   {
+    title: '提交者',
+    dataIndex: 'author',
+    key: 'author',
+  },
+  {
     title: '提交时间',
     dataIndex: 'date',
     key: 'date',
+  },
+  {
+    title: '操作',
+    key: 'action',
+    width: 100,
+    fixed: 'right',
+    slotName: 'commitAction',
   },
 ];
 
@@ -256,6 +258,18 @@ const handleTableChange = (pag: { current: number; pageSize: number; total: numb
   fetchRepositories();
 };
 
+// 构建环境相关
+const showBuildEnv = (record: Repository) => {
+  // TODO: 实现构建环境功能
+  Message.info('构建环境功能开发中...');
+};
+
+// 构建相关
+const handleBuild = (commit: any) => {
+  // TODO: 实现构建功能
+  Message.info('开始构建...');
+};
+
 // 初始化
 onMounted(() => {
   fetchRepositories();
@@ -289,6 +303,9 @@ onMounted(() => {
             </a-button>
             <a-button type="text" size="small" status="danger" @click="handleDelete(record.id)">
               删除
+            </a-button>
+            <a-button type="text" size="small" status="success" @click="showBuildEnv(record)">
+              构建环境
             </a-button>
           </a-space>
         </template>
@@ -343,7 +360,7 @@ onMounted(() => {
     <!-- 查看仓库详情对话框 -->
     <a-modal
       v-model:visible="detailVisible"
-      title="仓库详情"
+      :title="currentRepo?.name"
       :footer="false"
       width="800px"
     >
@@ -360,7 +377,15 @@ onMounted(() => {
             :columns="commitColumns"
             :data="commits"
             :loading="loadingCommits"
-          />
+            :pagination="pagination"
+            @change="handleTableChange"
+          >
+            <template #commitAction="{ record }">
+              <a-button type="text" size="small" status="success" @click="handleBuild(record)">
+                构建
+              </a-button>
+            </template>
+          </a-table>
         </a-tab-pane>
       </a-tabs>
     </a-modal>
