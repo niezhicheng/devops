@@ -4,11 +4,12 @@ import (
 	"devops/models"
 	"devops/utils"
 	"fmt"
+	"github.com/go-git/go-git/v5"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/go-git/go-git/v5"
+	_ "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"go.uber.org/zap"
