@@ -4,7 +4,7 @@ import { Message } from '@arco-design/web-vue';
 export interface Repository {
   id: number;
   name: string;
-  platform: string;
+  platform: 'github' | 'gitlab';
   url: string;
   token: string;
   defaultBranch?: string;
@@ -89,11 +89,16 @@ export async function deleteRepository(id: number): Promise<void> {
 export interface TestRepositoryParams {
   url: string;
   token: string;
+  platform: 'github' | 'gitlab';
 }
 
 export interface TestRepositoryResult {
   success: boolean;
   message?: string;
+  data?: {
+    username: string;
+    name: string;
+  };
 }
 
 export async function testRepository(params: TestRepositoryParams): Promise<TestRepositoryResult> {

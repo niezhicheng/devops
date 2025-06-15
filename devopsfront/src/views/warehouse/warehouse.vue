@@ -1,283 +1,380 @@
 <script lang="ts" setup>
-  import { ref, reactive, onMounted } from 'vue';
-  import { Message } from '@arco-design/web-vue';
-  import {
-    IconPlus,
-    IconSync,
-    IconEye,
-    IconDelete,
-    IconEdit,
-  } from '@arco-design/web-vue/es/icon';
-  import { useI18n } from 'vue-i18n';
-  import dayjs from 'dayjs';
-  import {
-    getRepositories,
-    createRepository,
-    updateRepository,
-    deleteRepository,
-    testRepository,
-  } from '@/api/warehouse';
-  import type { Repository } from '@/api/warehouse';
+import { ref, onMounted } from 'vue';
+import { Message } from '@arco-design/web-vue';
+import type { TableColumnData } from '@arco-design/web-vue';
+import {
+  getRepositories,
+  createRepository,
+  updateRepository,
+  deleteRepository,
+  getBranches,
+  getCommits,
+  type Repository,
+  type Branch,
+  type Commit,
+  type PaginationParams,
+  type PaginatedResponse,
+} from '@/api/repository';
 
-  const { t } = useI18n();
+interface FormState {
+  name: string;
+  platform: 'github' | 'gitlab';
+  url: string;
+  token: string;
+}
 
-  const loading = ref(false);
-  const repositories = ref<Repository[]>([]);
-  const modalVisible = ref(false);
-  const editingId = ref<number | null>(null);
-  const formRef = ref();
+// 状态变量
+const loading = ref(false);
+const repositories = ref<Repository[]>([]);
+const modalVisible = ref(false);
+const editingId = ref<number | null>(null);
+const formRef = ref();
+const detailVisible = ref(false);
+const currentRepo = ref<Repository | null>(null);
+const branches = ref<Branch[]>([]);
+const commits = ref<Commit[]>([]);
+const currentBranch = ref('');
+const loadingBranches = ref(false);
+const loadingCommits = ref(false);
 
-  const form = ref({
-    name: '',
-    url: '',
-    token: '',
-  });
+const pagination = ref({
+  current: 1,
+  pageSize: 10,
+  total: 0,
+});
 
-  const rules = {
-    name: [{ required: true, message: '请输入仓库名称' }],
-    url: [{ required: true, message: '请输入仓库地址' }],
-    token: [{ required: true, message: '请输入访问令牌' }],
-  };
+const form = ref<FormState>({
+  name: '',
+  platform: 'github',
+  url: '',
+  token: '',
+});
 
-  // 获取仓库列表
-  const fetchRepositories = async () => {
-    loading.value = true;
-    try {
-      console.log('获取仓库列表');
-      const res = await getRepositories();
-      console.log(res,"111")
-      // repositories.value
-      console.log('获取到的仓库列表:', repositories.value);
-      repositories.value = res
-    } catch (error) {
-      console.error('获取仓库列表失败:', error);
-      Message.error('获取仓库列表失败');
-    } finally {
-      loading.value = false;
-    }
-  };
+const rules = {
+  name: [{ required: true, message: '请输入仓库名称' }],
+  url: [{ required: true, message: '请输入仓库地址' }],
+  token: [{ required: true, message: '请输入访问令牌' }],
+};
 
-  // 打开模态框
-  const openModal = (record?: Repository) => {
-    if (record) {
-      editingId.value = record.id;
-      form.value = { ...record };
+// 表格列定义
+const columns: TableColumnData[] = [
+  {
+    title: '仓库名称',
+    dataIndex: 'name',
+    key: 'name',
+  },
+  {
+    title: '平台',
+    dataIndex: 'platform',
+    key: 'platform',
+  },
+  {
+    title: '仓库地址',
+    dataIndex: 'url',
+    key: 'url',
+  },
+  {
+    title: '状态',
+    dataIndex: 'status',
+    key: 'status',
+  },
+  {
+    title: '操作',
+    key: 'action',
+    width: 200,
+    fixed: 'right',
+    slotName: 'action',
+  },
+];
+
+// 分支表格列定义
+const branchColumns: TableColumnData[] = [
+  {
+    title: '分支名称',
+    dataIndex: 'name',
+    key: 'name',
+  },
+  {
+    title: '是否默认',
+    dataIndex: 'isHead',
+    key: 'isHead',
+  },
+];
+
+// 提交记录表格列定义
+const commitColumns: TableColumnData[] = [
+  {
+    title: '提交哈希',
+    dataIndex: 'hash',
+    key: 'hash',
+  },
+  {
+    title: '作者',
+    dataIndex: 'author',
+    key: 'author',
+  },
+  {
+    title: '提交信息',
+    dataIndex: 'message',
+    key: 'message',
+  },
+  {
+    title: '提交时间',
+    dataIndex: 'date',
+    key: 'date',
+  },
+];
+
+// 获取仓库列表
+const fetchRepositories = async () => {
+  loading.value = true;
+  try {
+    const res = await getRepositories({
+      current: pagination.value.current,
+      pageSize: pagination.value.pageSize,
+    });
+    console.log("收到的数据", res.data.list);
+    // 使用解构赋值来确保响应式更新
+    repositories.value = [...res.data.list];
+    pagination.value = {
+      ...pagination.value,
+      total: res.data.total
+    };
+  } catch (error) {
+    Message.error('获取仓库列表失败');
+  } finally {
+    loading.value = false;
+  }
+};
+
+// 显示添加/编辑模态框
+const showModal = (record?: Repository) => {
+  if (record) {
+    editingId.value = record.id;
+    form.value = {
+      name: record.name,
+      platform: record.platform,
+      url: record.url,
+      token: record.token,
+    };
+  } else {
+    editingId.value = null;
+    form.value = {
+      name: '',
+      platform: 'github',
+      url: '',
+      token: '',
+    };
+  }
+  modalVisible.value = true;
+};
+
+// 关闭模态框
+const closeModal = () => {
+  modalVisible.value = false;
+  formRef.value?.resetFields();
+};
+
+// 提交表单
+const handleSubmit = async () => {
+  try {
+    await formRef.value?.validate();
+
+    const formData = {
+      name: form.value.name,
+      platform: form.value.platform,
+      url: form.value.url,
+      token: form.value.token,
+      defaultBranch: 'main',
+      status: 'active',
+    };
+
+    if (editingId.value) {
+      await updateRepository(editingId.value, formData);
+      Message.success('仓库更新成功');
     } else {
-      editingId.value = null;
-      form.value = {
-        name: '',
-        url: '',
-        token: '',
-      };
+      await createRepository(formData);
+      Message.success('仓库创建成功');
     }
-    modalVisible.value = true;
-  };
-
-  // 关闭模态框
-  const closeModal = () => {
-    modalVisible.value = false;
-    formRef.value?.resetFields();
-  };
-
-  // 提交表单
-  const handleSubmit = async () => {
-    try {
-      const valid = await formRef.value?.validate();
-      // if (!valid) {
-      //   console.log('表单验证失败');
-      //   return;
-      // }
-
-      const formData = {
-        name: form.value.name,
-        platform: 'github', // 默认使用 GitHub
-        url: form.value.url,
-        token: form.value.token,
-        defaultBranch: 'main', // 默认分支
-        status: 'active', // 默认状态
-      };
-
-      console.log('准备提交数据:', formData);
-
-      if (editingId.value) {
-        console.log('更新仓库:', editingId.value);
-        await updateRepository(editingId.value, formData);
-        Message.success('仓库更新成功');
-      } else {
-        console.log('创建新仓库');
-        await createRepository(formData);
-        Message.success('仓库创建成功');
-      }
-      closeModal();
-      fetchRepositories();
-    } catch (error) {
-      console.error('提交失败:', error);
-      Message.error('操作失败');
-    }
-  };
-
-  // 删除仓库
-  const handleDelete = async (id: number) => {
-    try {
-      await deleteRepository(id);
-      Message.success('仓库删除成功');
-      fetchRepositories();
-    } catch (error) {
-      Message.error('删除失败');
-    }
-  };
-
-  // 获取平台颜色
-  const getPlatformColor = (platform: Repository['platform']) => {
-    const colors: Record<Repository['platform'], string> = {
-      github: 'blue',
-      gitlab: 'orange',
-      gitee: 'red',
-    };
-    return colors[platform] || 'gray';
-  };
-
-  // 获取状态颜色
-  const getStatusColor = (status: Repository['status']) => {
-    const colors: Record<Repository['status'], string> = {
-      active: 'green',
-      inactive: 'gray',
-      error: 'red',
-    };
-    return colors[status] || 'gray';
-  };
-
-  // 格式化日期
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleString();
-  };
-
-  // 测试仓库连接
-  const testConnection = async (url: string, token: string) => {
-    try {
-      loading.value = true;
-      const result = await testRepository({ url, token });
-      if (result.success) {
-        Message.success('仓库连接测试成功');
-      } else {
-        Message.error(result.message || '仓库连接测试失败');
-      }
-    } catch (error) {
-      console.error('测试连接失败:', error);
-      Message.error('测试连接失败');
-    } finally {
-      loading.value = false;
-    }
-  };
-
-  onMounted(() => {
+    closeModal();
     fetchRepositories();
-  });
+  } catch (error) {
+    Message.error('操作失败');
+  }
+};
+
+// 删除仓库
+const handleDelete = async (id: number) => {
+  try {
+    await deleteRepository(id);
+    Message.success('仓库删除成功');
+    await fetchRepositories();
+  } catch (error) {
+    Message.error('删除失败');
+  }
+};
+
+// 获取分支列表
+const fetchBranches = async (repositoryId: number) => {
+  loadingBranches.value = true;
+  try {
+    const { data } = await getBranches(repositoryId);
+    branches.value = data;
+  } catch (error) {
+    Message.error('获取分支列表失败');
+  } finally {
+    loadingBranches.value = false;
+  }
+};
+
+// 获取提交记录
+const fetchCommits = async (repositoryId: number) => {
+  loadingCommits.value = true;
+  try {
+    const { data } = await getCommits(repositoryId);
+    commits.value = data;
+  } catch (error) {
+    Message.error('获取提交记录失败');
+  } finally {
+    loadingCommits.value = false;
+  }
+};
+
+// 显示详情
+const showDetail = async (record: Repository) => {
+  currentRepo.value = record;
+  detailVisible.value = true;
+  await Promise.all([
+    fetchBranches(record.id),
+    fetchCommits(record.id),
+  ]);
+};
+
+// 表格变化处理
+const handleTableChange = (pag: { current: number; pageSize: number; total: number }) => {
+  pagination.value = pag;
+  fetchRepositories();
+};
+
+// 初始化
+onMounted(() => {
+  fetchRepositories();
+});
 </script>
 
 <template>
   <div class="warehouse-container">
-    <a-card class="general-card" :title="$t('仓库管理')">
-      <template #extra>
-        <a-button type="primary" @click="openModal()">
-          <template #icon><icon-plus /></template>
-          {{ $t('添加仓库') }}
-        </a-button>
+    <a-card>
+      <template #title>
+        <div class="card-title">
+          <span>仓库管理</span>
+          <a-button type="primary" @click="showModal()">添加仓库</a-button>
+        </div>
       </template>
+
       <a-table
+        :columns="columns"
         :data="repositories"
         :loading="loading"
-        :pagination="false"
-        :bordered="false"
+        :pagination="pagination"
+        @change="handleTableChange"
       >
-        <template #columns>
-          <a-table-column :title="$t('仓库名称')" data-index="name" />
-          <a-table-column :title="$t('仓库地址')" data-index="url" />
-          <a-table-column :title="$t('默认分支')" data-index="defaultBranch" />
-          <a-table-column :title="$t('最后同步时间')" data-index="lastSyncAt">
-            <template #cell="{ record }">
-              {{ record.lastSyncAt ? formatDate(record.lastSyncAt) : '-' }}
-            </template>
-          </a-table-column>
-          <a-table-column :title="$t('状态')" data-index="status" />
-          <a-table-column :title="$t('操作')" align="center">
-            <template #cell="{ record }">
-              <a-space>
-                <a-button type="text" size="small" @click="openModal(record)">
-                  <template #icon><icon-edit /></template>
-                  {{ $t('编辑') }}
-                </a-button>
-                <a-popconfirm
-                  :content="$t('确定要删除这个仓库吗？')"
-                  @ok="handleDelete(record.id)"
-                >
-                  <a-button type="text" status="danger" size="small">
-                    <template #icon><icon-delete /></template>
-                    {{ $t('删除') }}
-                  </a-button>
-                </a-popconfirm>
-                <a-button 
-                  type="text" 
-                  size="small" 
-                  status="success"
-                  @click="testConnection(record.url, record.token)"
-                >
-                  {{ $t('测试连接') }}
-                </a-button>
-              </a-space>
-            </template>
-          </a-table-column>
+        <template #action="{ record }">
+          <a-space>
+            <a-button type="text" size="small" @click="showDetail(record)">
+              查看
+            </a-button>
+            <a-button type="text" size="small" @click="showModal(record)">
+              编辑
+            </a-button>
+            <a-button type="text" size="small" status="danger" @click="handleDelete(record.id)">
+              删除
+            </a-button>
+          </a-space>
         </template>
       </a-table>
     </a-card>
 
+    <!-- 添加/编辑仓库对话框 -->
     <a-modal
       v-model:visible="modalVisible"
-      :title="editingId ? $t('编辑仓库') : $t('添加仓库')"
+      :title="editingId ? '编辑仓库' : '添加仓库'"
       @ok="handleSubmit"
       @cancel="closeModal"
     >
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
-        <a-form-item field="name" :label="$t('仓库名称')">
-          <a-input v-model="form.name" :placeholder="$t('请输入仓库名称')" />
+        <a-form-item
+          field="name"
+          label="仓库名称"
+          :rules="[{ required: true, message: '请输入仓库名称' }]"
+        >
+          <a-input v-model="form.name" placeholder="请输入仓库名称" />
         </a-form-item>
-        <a-form-item field="url" :label="$t('仓库地址')">
-          <a-input v-model="form.url" :placeholder="$t('请输入仓库地址')" />
+        <a-form-item
+          field="platform"
+          label="平台"
+          :rules="[{ required: true, message: '请选择平台' }]"
+        >
+          <a-select v-model="form.platform" placeholder="请选择平台">
+            <a-option value="github">GitHub</a-option>
+            <a-option value="gitlab">GitLab</a-option>
+          </a-select>
         </a-form-item>
-        <a-form-item field="token" :label="$t('访问令牌')">
+        <a-form-item
+          field="url"
+          label="仓库地址"
+          :rules="[{ required: true, message: '请输入仓库地址' }]"
+        >
+          <a-input v-model="form.url" placeholder="请输入仓库地址" />
+        </a-form-item>
+        <a-form-item
+          field="token"
+          label="访问令牌"
+          :rules="[{ required: true, message: '请输入访问令牌' }]"
+        >
           <a-input-password
             v-model="form.token"
-            :placeholder="$t('请输入访问令牌')"
+            placeholder="请输入访问令牌"
           />
         </a-form-item>
-        <div class="form-footer">
-          <a-button type="primary" @click="handleSubmit">
-            {{ editingId ? $t('更新') : $t('创建') }}
-          </a-button>
-          <a-button 
-            type="outline" 
-            status="success" 
-            @click="testConnection(form.url, form.token)"
-            style="margin-left: 8px"
-          >
-            {{ $t('测试连接') }}
-          </a-button>
-        </div>
       </a-form>
+    </a-modal>
+
+    <!-- 查看仓库详情对话框 -->
+    <a-modal
+      v-model:visible="detailVisible"
+      title="仓库详情"
+      :footer="false"
+      width="800px"
+    >
+      <a-tabs>
+        <a-tab-pane key="branches" title="分支">
+          <a-table
+            :columns="branchColumns"
+            :data="branches"
+            :loading="loadingBranches"
+          />
+        </a-tab-pane>
+        <a-tab-pane key="commits" title="提交记录">
+          <a-table
+            :columns="commitColumns"
+            :data="commits"
+            :loading="loadingCommits"
+          />
+        </a-tab-pane>
+      </a-tabs>
     </a-modal>
   </div>
 </template>
 
 <style scoped>
-  .warehouse-container {
-    padding: 20px;
-  }
+.warehouse-container {
+  padding: 20px;
+}
 
-  .general-card {
-    margin-bottom: 20px;
-  }
-
-  .form-footer {
-    text-align: right;
-  }
+.card-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
 </style>

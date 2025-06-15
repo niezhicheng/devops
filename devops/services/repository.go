@@ -1,34 +1,56 @@
 package services
 
 import (
-	"devops/models"
-	"devops/utils"
+	"context"
 	"fmt"
-	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/transport"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
-	_ "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/transport/http"
+	"github.com/go-git/go-git/v5/plumbing/object"
+	gitHttp "github.com/go-git/go-git/v5/plumbing/transport/http"
+	"github.com/go-git/go-git/v5/storage/memory"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
+
+	"devops/models"
+	"devops/utils"
 )
 
 // RepositoryService 仓库服务
 type RepositoryService struct {
+	DB       *gorm.DB
 	basePath string
 }
 
 // NewRepositoryService 创建仓库服务实例
-func NewRepositoryService() *RepositoryService {
+func NewRepositoryService(db *gorm.DB) *RepositoryService {
 	basePath := filepath.Join(os.TempDir(), "devops", "repositories")
 	if err := os.MkdirAll(basePath, 0755); err != nil {
 		utils.Logger.Error("创建仓库目录失败", zap.Error(err))
 	}
 	return &RepositoryService{
+		DB:       db,
 		basePath: basePath,
 	}
+}
+
+// Branch 分支信息
+type Branch struct {
+	Name   string `json:"name"`
+	IsHead bool   `json:"isHead"`
+}
+
+// Commit 提交信息
+type Commit struct {
+	Hash    string    `json:"hash"`
+	Author  string    `json:"author"`
+	Message string    `json:"message"`
+	Date    time.Time `json:"date"`
 }
 
 // SyncRepository 同步仓库
@@ -41,6 +63,7 @@ func (s *RepositoryService) SyncRepository(repo *models.Repository) error {
 
 	// 创建本地仓库目录
 	repoPath := filepath.Join(s.basePath, owner, repoName)
+	fmt.Println(repoPath, "这是路径")
 	if err := os.MkdirAll(repoPath, 0755); err != nil {
 		return fmt.Errorf("创建仓库目录失败: %v", err)
 	}
@@ -53,7 +76,7 @@ func (s *RepositoryService) SyncRepository(repo *models.Repository) error {
 		// 克隆仓库
 		r, err = git.PlainClone(repoPath, false, &git.CloneOptions{
 			URL: repo.URL,
-			Auth: &http.BasicAuth{
+			Auth: &gitHttp.BasicAuth{
 				Username: "token",
 				Password: repo.Token,
 			},
@@ -75,7 +98,7 @@ func (s *RepositoryService) SyncRepository(repo *models.Repository) error {
 		}
 
 		err = w.Pull(&git.PullOptions{
-			Auth: &http.BasicAuth{
+			Auth: &gitHttp.BasicAuth{
 				Username: "token",
 				Password: repo.Token,
 			},
@@ -93,43 +116,99 @@ func (s *RepositoryService) SyncRepository(repo *models.Repository) error {
 
 	// 更新仓库信息
 	repo.DefaultBranch = head.Name().Short()
-	//repo.LastSyncAt = time.Now()
 	repo.Status = "active"
 
 	return nil
 }
 
 // GetBranches 获取分支列表
-func (s *RepositoryService) GetBranches(repo *models.Repository) ([]string, error) {
-	// 解析仓库路径
-	owner, repoName := parseGitHubURL(repo.URL)
-	if owner == "" || repoName == "" {
-		return nil, fmt.Errorf("无效的 GitHub 仓库 URL: %s", repo.URL)
-	}
-
-	// 打开仓库
-	repoPath := filepath.Join(s.basePath, owner, repoName)
-	r, err := git.PlainOpen(repoPath)
+func (s *RepositoryService) GetBranches(ctx context.Context, repo *models.Repository) ([]Branch, error) {
+	// 克隆仓库到内存
+	r, err := git.CloneContext(ctx, memory.NewStorage(), nil, &git.CloneOptions{
+		URL: repo.URL,
+		Auth: &gitHttp.BasicAuth{
+			Username: "token",
+			Password: repo.Token,
+		},
+		ProxyOptions: transport.ProxyOptions{
+			URL: "http://127.0.0.1:7890",
+		},
+	})
 	if err != nil {
-		return nil, fmt.Errorf("打开仓库失败: %v", err)
+		return nil, fmt.Errorf("clone repository failed: %v", err)
 	}
 
 	// 获取所有分支
 	branches, err := r.Branches()
 	if err != nil {
-		return nil, fmt.Errorf("获取分支列表失败: %v", err)
+		return nil, fmt.Errorf("get branches failed: %v", err)
 	}
 
-	var branchNames []string
+	var result []Branch
+	head, err := r.Head()
+	if err != nil {
+		return nil, fmt.Errorf("get head failed: %v", err)
+	}
+
 	err = branches.ForEach(func(ref *plumbing.Reference) error {
-		branchNames = append(branchNames, ref.Name().Short())
+		branch := Branch{
+			Name:   ref.Name().Short(),
+			IsHead: ref.Hash() == head.Hash(),
+		}
+		result = append(result, branch)
 		return nil
 	})
+
+	return result, err
+}
+
+// GetCommits 获取提交历史
+func (s *RepositoryService) GetCommits(ctx context.Context, repo *models.Repository, branch string) ([]Commit, error) {
+	// 克隆仓库到内存
+	r, err := git.CloneContext(ctx, memory.NewStorage(), nil, &git.CloneOptions{
+		URL: repo.URL,
+		Auth: &gitHttp.BasicAuth{
+			Username: "token",
+			Password: repo.Token,
+		},
+		ProxyOptions: transport.ProxyOptions{
+			URL: "http://127.0.0.1:7890",
+		},
+	})
 	if err != nil {
-		return nil, fmt.Errorf("遍历分支失败: %v", err)
+		return nil, fmt.Errorf("clone repository failed: %v", err)
 	}
 
-	return branchNames, nil
+	// 获取分支引用
+	var ref *plumbing.Reference
+	if branch == "" {
+		ref, err = r.Head()
+	} else {
+		ref, err = r.Reference(plumbing.NewBranchReferenceName(branch), true)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get branch reference failed: %v", err)
+	}
+
+	// 获取提交历史
+	commitIter, err := r.Log(&git.LogOptions{From: ref.Hash()})
+	if err != nil {
+		return nil, fmt.Errorf("get commit history failed: %v", err)
+	}
+
+	var commits []Commit
+	err = commitIter.ForEach(func(c *object.Commit) error {
+		commit := Commit{
+			Hash:    c.Hash.String(),
+			Author:  c.Author.Name,
+			Message: c.Message,
+			Date:    c.Author.When,
+		}
+		commits = append(commits, commit)
+		return nil
+	})
+
+	return commits, err
 }
 
 // GetFiles 获取文件列表
