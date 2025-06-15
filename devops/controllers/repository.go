@@ -6,10 +6,12 @@ import (
 	"devops/services"
 	"devops/utils"
 	"fmt"
-	"net/http"
-
 	"github.com/gin-gonic/gin"
+	"github.com/google/go-github/github"
 	"go.uber.org/zap"
+	"golang.org/x/oauth2"
+	"net/http"
+	"net/url"
 )
 
 var repositoryService = services.NewRepositoryService()
@@ -167,4 +169,52 @@ func ListFiles(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, files)
+}
+
+// TestRepository 测试仓库连接
+func TestRepository(ctx *gin.Context) {
+	var req struct {
+		URL   string `json:"url" binding:"required"`
+		Token string `json:"token" binding:"required"`
+	}
+
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "参数错误",
+		})
+		return
+	}
+
+	// 创建 GitHub 客户端
+	client := github.NewClient(nil)
+	baseURL, _ := url.Parse("https://api.github.com/")
+	client.BaseURL = baseURL
+	client.UserAgent = "devops"
+
+	// 设置认证
+	ts := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: req.Token},
+	)
+	tc := oauth2.NewClient(ctx, ts)
+	client = github.NewClient(tc)
+
+	// 测试连接 - 获取当前用户信息
+	user, _, err := client.Users.Get(ctx, "")
+	if err != nil {
+		ctx.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": fmt.Sprintf("GitHub API 连接失败: %v", err),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "连接测试成功",
+		"data": gin.H{
+			"username": user.GetLogin(),
+			"name":     user.GetName(),
+		},
+	})
 }

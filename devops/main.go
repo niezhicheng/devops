@@ -48,13 +48,13 @@ func main() {
 
 	// 仓库管理路由
 	repositoryGroup := r.Group("/api/repositories")
-	//repositoryGroup.Use(middleware.AuthMiddleware())
 	{
 		repositoryGroup.GET("", controllers.List)
 		repositoryGroup.POST("", controllers.Create)
 		repositoryGroup.GET("/:id", controllers.Get)
 		repositoryGroup.PUT("/:id", controllers.Update)
 		repositoryGroup.DELETE("/:id", controllers.Delete)
+		repositoryGroup.POST("/test", controllers.TestRepository)
 	}
 
 	// 启动服务器

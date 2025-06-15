@@ -15,6 +15,7 @@
     createRepository,
     updateRepository,
     deleteRepository,
+    testRepository,
   } from '@/api/warehouse';
   import type { Repository } from '@/api/warehouse';
 
@@ -151,6 +152,24 @@
     return new Date(date).toLocaleString();
   };
 
+  // 测试仓库连接
+  const testConnection = async (url: string, token: string) => {
+    try {
+      loading.value = true;
+      const result = await testRepository({ url, token });
+      if (result.success) {
+        Message.success('仓库连接测试成功');
+      } else {
+        Message.error(result.message || '仓库连接测试失败');
+      }
+    } catch (error) {
+      console.error('测试连接失败:', error);
+      Message.error('测试连接失败');
+    } finally {
+      loading.value = false;
+    }
+  };
+
   onMounted(() => {
     fetchRepositories();
   });
@@ -197,6 +216,14 @@
                     {{ $t('删除') }}
                   </a-button>
                 </a-popconfirm>
+                <a-button 
+                  type="text" 
+                  size="small" 
+                  status="success"
+                  @click="testConnection(record.url, record.token)"
+                >
+                  {{ $t('测试连接') }}
+                </a-button>
               </a-space>
             </template>
           </a-table-column>
@@ -223,6 +250,19 @@
             :placeholder="$t('请输入访问令牌')"
           />
         </a-form-item>
+        <div class="form-footer">
+          <a-button type="primary" @click="handleSubmit">
+            {{ editingId ? $t('更新') : $t('创建') }}
+          </a-button>
+          <a-button 
+            type="outline" 
+            status="success" 
+            @click="testConnection(form.url, form.token)"
+            style="margin-left: 8px"
+          >
+            {{ $t('测试连接') }}
+          </a-button>
+        </div>
       </a-form>
     </a-modal>
   </div>
@@ -235,5 +275,9 @@
 
   .general-card {
     margin-bottom: 20px;
+  }
+
+  .form-footer {
+    text-align: right;
   }
 </style>

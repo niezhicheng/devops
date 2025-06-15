@@ -84,3 +84,19 @@ export async function updateRepository(id: number, data: Partial<Repository>): P
 export async function deleteRepository(id: number): Promise<void> {
   await request.delete(`/api/repositories/${id}`);
 }
+
+// 测试仓库连接
+export interface TestRepositoryParams {
+  url: string;
+  token: string;
+}
+
+export interface TestRepositoryResult {
+  success: boolean;
+  message?: string;
+}
+
+export async function testRepository(params: TestRepositoryParams): Promise<TestRepositoryResult> {
+  const response = await request.post('/api/repositories/test', params);
+  return response.data;
+}
