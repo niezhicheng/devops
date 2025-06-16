@@ -44,7 +44,7 @@ func setupHostRoutes(api *gin.RouterGroup) {
 	hostGroup := api.Group("/host")
 	{
 		hostGroup.GET("/list", controllers.GetHosts)
-		hostGroup.POST("", controllers.CreateHost)
+		hostGroup.POST("/add", controllers.CreateHost)
 		hostGroup.PUT("/:id", controllers.UpdateHost)
 		hostGroup.DELETE("/:id", controllers.DeleteHost)
 

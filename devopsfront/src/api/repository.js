@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // 配置axios默认值
-axios.defaults.baseURL = 'http://localhost:8080/api';  // 设置后端API基础URL
+axios.defaults.baseURL = import.meta.env.VITE_HOST;  // 设置后端API基础URL
 axios.defaults.timeout = 5000;  // 设置超时时间
 
 // 添加请求拦截器
@@ -30,37 +30,37 @@ axios.interceptors.response.use(
 
 // 获取仓库列表
 export function getRepositories(params) {
-  return axios.get('/repositories', { params });
+  return axios.get('/api/repositories', { params });
 }
 
 // 创建仓库
 export function createRepository(data) {
-  return axios.post('/repositories', data);
+  return axios.post('/api/repositories', data);
 }
 
 // 更新仓库
 export function updateRepository(id, data) {
-  return axios.put(`/repositories/${id}`, data);
+  return axios.put(`/api/repositories/${id}`, data);
 }
 
 // 删除仓库
 export function deleteRepository(id) {
-  return axios.delete(`/repositories/${id}`);
+  return axios.delete(`/api/repositories/${id}`);
 }
 
 // 测试仓库连接
 export function testRepository(data) {
-  return axios.post('/repositories/test', data);
+  return axios.post('/api/repositories/test', data);
 }
 
 // 获取仓库分支列表
 export function getBranches(repoId) {
-  return axios.get(`/repositories/${repoId}/branches`);
+  return axios.get(`/api/repositories/${repoId}/branches`);
 }
 
 // 获取提交历史
 export function getCommits(repoId, branch) {
-  return axios.get(`/repositories/${repoId}/commits`, {
+  return axios.get(`/api/repositories/${repoId}/commits`, {
     params: { branch },
   });
-} 
+}

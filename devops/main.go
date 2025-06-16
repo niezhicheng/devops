@@ -13,5 +13,5 @@ func main() {
 	r := router.SetupRouter()
 
 	// 启动服务器
-	r.Run(":8080")
+	r.Run(":8100")
 }

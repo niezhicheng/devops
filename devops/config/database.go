@@ -13,7 +13,7 @@ import (
 )
 
 func InitDB() {
-	dsn := "root:d200145001@tcp(127.0.0.1:3306)/devops?charset=utf8mb4&parseTime=True&loc=Local"
+	dsn := "devops:devops@tcp(127.0.0.1:3306)/devops?charset=utf8mb4&parseTime=True&loc=Local"
 
 	// 配置GORM
 	gormConfig := &gorm.Config{

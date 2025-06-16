@@ -2,7 +2,7 @@ import axios from 'axios';
 import { Message } from '@arco-design/web-vue';
 
 const request = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080',
+  baseURL: import.meta.env.VITE_HOST,
   timeout: 10000,
 });
 
@@ -33,4 +33,4 @@ export async function deleteRepository(id) {
 export async function testRepository(params) {
   const response = await request.post('/api/repositories/test', params);
   return response.data;
-} 
+}

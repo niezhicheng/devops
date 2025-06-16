@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // 配置axios默认值
-axios.defaults.baseURL = 'http://localhost:8080';  // 设置后端API基础URL
+axios.defaults.baseURL = import.meta.env.VITE_HOST;  // 设置后端API基础URL
 axios.defaults.timeout = 5000;  // 设置超时时间
 
 // 添加请求拦截器
